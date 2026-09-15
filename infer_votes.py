@@ -3,6 +3,7 @@ import pandas as pd
 import scipy.stats as stats
 
 from argparse import ArgumentParser
+from tqdm import tqdm
 
 
 def make_hist_list(n_votes):
@@ -155,12 +156,16 @@ def infer_file_votes(args):
     vars = df[args.var_col].values
     n_votes = df[args.n_votes_col].values
     votes_list = []
-    for mean, var, n in zip(means, vars, n_votes):
+    # Dictionary to store seen histograms in
+    vote_pattern_dict = dict()
+    total = len(df)
+    for mean, var, n in tqdm(zip(means, vars, n_votes), total=total):
         votes, candidates, probs, vote_pattern_dict = infer_votes(
             mean,
             var,
             n,
             seed=seed,
+            vote_pattern_dict=vote_pattern_dict,
         )
         votes_list.append(votes)
 
