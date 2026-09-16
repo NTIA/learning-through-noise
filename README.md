@@ -1,12 +1,11 @@
 # Learning through the noise
 This repository corresponds to the paper "Learning Through the Noise: Impact of Training Objective Speech Quality Estimators with Noisy Subjective Scores" by Jaden Pieper and Stephen D. Voran.
 
-# Abstract
-
 # Description
 This repository contains supplementary materials to the paper.
-* `statistical-tests.md` describes the tests of statistical significance used to compare correlation results in the paper and determine if the difference of two correlations was significant.
-* `cascaded-BinoMOS.md` describes the calculation and derivation of the effective voting power of cascaded BinoMOS, where a MOS value with $n_1$ ratings per file is used as an input to BinoMOS with $n_2$ ratings per file.
+* `statistical-tests.pdf` describes the tests of statistical significance used to compare correlation results in the paper and determine if the difference of two correlations was significant.
+* `cascaded-BinoMOS.pdf` describes the calculation and derivation of the effective voting power of cascaded BinoMOS, where a MOS value with $n_1$ ratings per file is used as an input to BinoMOS with $n_2$ ratings per file.
+* `inferring-votes.md` describes when and how vote patterns can be inferred from a mean, standard deviation, and number of contributing votes.
 
 ## Inferring votes from MOS statistics
 
@@ -38,3 +37,8 @@ different column names:
 | `--var_col` | `MOS_Var` | Input column containing the sample variance |
 | `--n_votes_col` | `n_votes` | Input column containing the number of votes |
 | `--seed` | `None` | Seed used when selecting among multiple candidates |
+
+## Information Regarding Paper Results
+The config files in the `model_config/` folder detail all of the configuration details used to train the models and generate the results for the paper "Learning Through the Noise: Impact of Training Objective Speech Quality Estimators with Noisy Subjective Scores."
+All other code, config files, and documentation required to train models can be found [here](https://github.com/NTIA/Dataset-Concealment).
+The files in the `model_config/` directory of this repository should be copied into the `dsc/config/models` directory in the Dataset Concealment repo prior to running code.

@@ -1,0 +1,116 @@
+hydra:
+  run:
+      dir: ./outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  job:
+      chdir: True
+
+defaults:
+  - logging: clearml
+  - loss: L2
+  - data: nisqa-data
+  - _self_
+
+project:
+  name: LearningThroughNoise
+  task: NISQA-AlignNet
+
+finetune:
+  restore_file: null
+
+common:
+  seed: 1234
+  auto_batch_size: false
+  lr: 0.001
+
+dataclass:
+  _target_: hydra.utils.get_class
+  path: dsc.NISQAAudioData
+
+optimization:
+  _target_: pytorch_lightning.Trainer
+  accelerator: gpu
+  devices:
+  - 0
+  log_every_n_steps: 5
+  max_epochs: 500
+  precision: 16-mixed
+
+earlystop:
+  _target_: pytorch_lightning.callbacks.early_stopping.EarlyStopping
+  patience: 15
+
+model:
+  _target_: dsc.Model
+  loss_weights: 1
+
+network:
+  _target_: dsc.AlignNet
+  aligner_corr_threshold: 0.6
+  audio_net_freeze_epochs: 0
+  audio_net:
+    _target_: dsc.NISQA_DIM
+    # Framewise options (usually CNN)  
+    cnn_model: adapt # framewise model, either 'adapt' for CNN with adaptive maxpooling | 'standard' for standard CNN | 'dff' for deep feed-forward network | 'skip' to skip framewise modelling
+    cnn_c_out_1: 16 # number of output channels of first convolutional layer
+    cnn_c_out_2: 32 # number of output channels of the second convolutional layer
+    cnn_c_out_3: 64 # number of output channels of the last four convolutional layer
+    cnn_kernel_size: [3,3] 
+    cnn_dropout: 0.2
+    cnn_fc_out_h: null # length of the CNN output feature vector, if 'null' the last fully connected layer is omitted
+    cnn_pool_1: [24,7] # outpuf dimensions of first adaptive pooling ('adaptive' CNN only)
+    cnn_pool_2: [12,5] # outpuf dimensions of second adaptive pooling ('adaptive' CNN only)
+    cnn_pool_3: [6,3] # outpuf dimensions of third adaptive pooling ('adaptive' CNN only)
+    # Time-Depedency options 
+    td: self_att # time-depdency model, either 'self_att' for Transfomer based Self-Attention network (td_lstm_.. options will be ignored) | 'lstm' (td_sa_.. options will be ignored)
+    td_sa_d_model: 64 # attention network dimension
+    td_sa_nhead: 1 # number of heads
+    td_sa_pos_enc: False # apply positional encoding (no improvement in previous experiments)
+    td_sa_num_layers: 2 # self-attention depth
+    td_sa_h: 64 # hidden units of self-attention feedforward network
+    td_sa_dropout: 0.1 # self-attention dropout
+    td_lstm_h: null # number of LSTM hidden units
+    td_lstm_num_layers: null # LSTM depth
+    td_lstm_dropout: null 
+    td_lstm_bidirectional: null  # use bidirectional LSTM -> hidden units x 2
+    # Second Time-Depedency options (optional, for example for LSTM-Self-Attention network)
+    td_2: skip
+    td_2_sa_d_model: null
+    td_2_sa_nhead: null
+    td_2_sa_pos_enc: null
+    td_2_sa_num_layers: null
+    td_2_sa_h: null
+    td_2_sa_dropout: null
+    td_2_lstm_h: null
+    td_2_lstm_num_layers: null
+    td_2_lstm_dropout: null
+    td_2_lstm_bidirectional: null
+    # Pooling options
+    pool: att # 'att' for Attention-Pooling | 'avg' for average-pooling | 'max' max-pooling | 'last_step' last-step pooling | 'last_step_bi' last-step pooling with BiLSTMs  
+    pool_att_h: 128 # number of hidden units of attention-pooling feedforward network
+    pool_att_dropout: 0 # attention pooling dropout
+  aligner:
+    _target_: dsc.NoAligner
+    layer_dims:
+    - 16
+    - 16
+    - 16
+    - 16
+    - 1
+    reference_index: 0
+    embedding_dim: 10
+
+checkpoint:
+  _target_: pytorch_lightning.callbacks.ModelCheckpoint
+  monitor: val_loss
+  mode: min
+  filename: '{epoch}-{val_loss:.4f}'
+  save_top_k: 5
+  every_n_epochs: 1
+  every_n_train_steps: null
+
+optimizer:
+  _target_: dsc.OptimizerWrapper
+  class_name: torch.optim.Adam
+
+transform:
+  _target_: dsc.NoneTransform
