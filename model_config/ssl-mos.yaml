@@ -1,0 +1,80 @@
+hydra:
+  run:
+      dir: ./outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  job:
+      chdir: True
+
+defaults:
+  - logging: clearml
+  - loss: L1
+  - data: wav2vec-data
+  - _self_
+
+project:
+  name: LearningThroughNoise
+  task: Wav2Vec
+
+finetune:
+  restore_file: null
+
+common:
+  seed: 1234
+  auto_batch_size: false
+  lr: 0.0001
+
+dataclass:
+  _target_: hydra.utils.get_class
+  path: dsc.AudioData
+
+optimization:
+  _target_: pytorch_lightning.Trainer
+  accelerator: gpu
+  devices:
+  - 0
+  log_every_n_steps: 5
+  max_epochs: 200
+  precision: 16-mixed
+
+earlystop:
+  _target_: pytorch_lightning.callbacks.early_stopping.EarlyStopping
+  patience: 10
+
+model:
+  _target_: dsc.Model
+  loss_weights: 1
+
+network:
+  _target_: dsc.AlignNet
+  aligner_corr_threshold: null
+  audio_net_freeze_epochs: 0
+  audio_net:
+    _target_: dsc.Wav2VecLinearSequence
+    n_layers: 1
+    pretrain_path: /path/to/wav2vec_small.pt
+  aligner:
+    _target_: dsc.NoAligner
+    layer_dims:
+    - 16
+    - 16
+    - 16
+    - 16
+    - 1
+    reference_index: 0
+    embedding_dim: 10
+
+checkpoint:
+  _target_: pytorch_lightning.callbacks.ModelCheckpoint
+  monitor: val_loss
+  mode: min
+  filename: '{epoch}-{val_loss:.4f}'
+  save_top_k: 5
+  every_n_epochs: 1
+  every_n_train_steps: null
+
+optimizer:
+  _target_: dsc.OptimizerWrapper
+  class_name: torch.optim.SGD
+  momentum: 0.9
+
+transform:
+  _target_: dsc.NoneTransform

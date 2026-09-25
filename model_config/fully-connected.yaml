@@ -1,0 +1,79 @@
+hydra:
+    run:
+        dir: ./outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    job:
+        chdir: True
+
+defaults:
+  - logging: clearml
+  - loss: L2
+  - data: fully-connected-data
+  - _self_
+
+project:
+  name: LearningThroughNoise
+  task: fully-connected
+
+finetune:
+  restore_file: null
+
+common:
+  seed: 1234
+  auto_batch_size: false
+  lr: 0.0001
+
+dataclass:
+  _target_: hydra.utils.get_class
+  path: dsc.DFTAudioData
+
+optimization:
+  _target_: pytorch_lightning.Trainer
+  accelerator: gpu
+  devices:
+  - 0
+  log_every_n_steps: 5
+  max_epochs: 200
+  precision: 16-mixed
+
+earlystop:
+  _target_: pytorch_lightning.callbacks.early_stopping.EarlyStopping
+  patience: 20
+
+model:
+  _target_: dsc.Model
+  loss_weights: 1
+
+network:
+  _target_: dsc.AlignNet
+  aligner_corr_threshold: null
+  audio_net:
+    _target_: dsc.LinearSequence
+    in_features: 130
+    layer_dims:
+      - 64
+      - 32
+      - 16
+      - 1
+    extra_squeeze: true
+  aligner:
+    _target_: dsc.NoAligner
+    reference_index: 0
+  audio_net_freeze_epochs: 0
+
+checkpoint:
+  _target_: pytorch_lightning.callbacks.ModelCheckpoint
+  monitor: val_loss
+  mode: min
+  filename: '{epoch}-{val_loss:.4f}'
+  save_top_k: 5
+  every_n_epochs: 1
+  every_n_train_steps: null
+
+optimizer:
+  _target_: dsc.OptimizerWrapper
+  class_name: torch.optim.Adam
+
+transform:
+  _target_: dsc.DFT_FC
+  frame_size: 128
+  frame_stride_frac: 0.5
